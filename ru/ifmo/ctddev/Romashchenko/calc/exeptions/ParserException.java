@@ -8,11 +8,9 @@ package ru.ifmo.ctddev.Romashchenko.calc.exeptions;
  *
  * @author Андрей
  */
-public class ParserException  extends Exception{
+public class ParserException extends Exception {
 
     public ParserException(String message) {
-        super("ParserException : "+message);
+        super("ParserException : " + message);
     }
-    
-    
 }

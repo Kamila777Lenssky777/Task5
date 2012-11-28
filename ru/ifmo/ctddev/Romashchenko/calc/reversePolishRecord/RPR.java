@@ -13,29 +13,45 @@ import java.util.Stack;
 //reversed polish record -- algorithm for parsing function
 public class RPR {
 
-    private Stack<String> outputline = new Stack<>();   //stack for reversed record
+    //private Stack<String> outputline = new Stack<String>();   //stack for reversed record
+    private IEvaluation formula;
+
+    public enum Priority {
+
+        ONE, TWO, THREE, FOUR, FIVE;
+    }
+
+    public RPR(List<String> list) throws ParserException, EvaluationException {
+        Stack<String> outputline = fillOutputLine(list);
+        formula = calculation(outputline);
+
+    }
+
+    public IEvaluation getFormula() {
+        return formula;
+    }
 
     //fills outputline
-    public void fillOutputLine(List<String> list) throws ParserException {
-
-        Stack<String> stack = new Stack<>();
+    public Stack<String> fillOutputLine(List<String> list) throws ParserException {
+        Stack<String> outputline = new Stack<String>();
+        Stack<String> stack = new Stack<String>();
         try {
-            for (String e : list) {
-                Integer pr = getPriority(e);
-                if (pr == 1) {
-                    outputline.push(e);
-                } else if (pr == 4) {
-                    stack.push(e);
-                } else if (pr == 5) {
-                    while (!stack.isEmpty() && getPriority(stack.peek()) != 4) {
+            for (String elementOfList : list) {
+                Priority priority = getPriority(elementOfList);
+                if (priority == Priority.ONE) {
+                    outputline.push(elementOfList);
+                } else if (priority == Priority.FOUR) {
+                    stack.push(elementOfList);
+                } else if (priority == Priority.FIVE) {
+                    while (!stack.isEmpty() && getPriority(stack.peek()) != Priority.FOUR) {
                         outputline.push(stack.pop());
                     }
                     stack.pop();
                 } else {
-                    while (!stack.isEmpty() && pr <= getPriority(stack.peek()) && getPriority(stack.peek()) != 4) {
+                    while (!stack.isEmpty() && priority.compareTo(getPriority(stack.peek())) <= 0 && !getPriority(stack.peek()).equals(Priority.FOUR)) {
                         outputline.push(stack.pop());
                     }
-                    stack.push(e);
+                    stack.push(elementOfList);
                 }
             }
         } catch (Exception ex) {
@@ -45,37 +61,36 @@ public class RPR {
         while (!stack.isEmpty()) {
             outputline.push(stack.pop());
         }
+        return outputline;
     }
 
     //defines priority of the token
-    private Integer getPriority(String ex) {
+    private Priority getPriority(String ex) {
         if (ex.equals("*") || ex.equals("/")) {
-            return 3;
+            return Priority.THREE;
         } else if (ex.equals("-") || ex.equals("+")) {
-            return 2;
+            return Priority.TWO;
         } else if (ex.equals("(")) {
-            return 4;
+            return Priority.FOUR;
         } else if (ex.equals(")")) {
-            return 5;
+            return Priority.FIVE;
         } else {
-            return 1;
+            return Priority.ONE;
         }
     }
 
-    @Override
-    public String toString() {
-        return "RPR{" + "outputline=" + outputline + '}';
-    }
-
     //calculates the function in the point num with filled before outputline
-    public Integer calculation(Integer num) throws EvaluationException, ParserException {
-        Stack<IEvaluation> stack = new Stack<>();
+    public IEvaluation calculation(Stack<String> outputline) throws EvaluationException, ParserException {
+        Stack<IEvaluation> stack = new Stack<IEvaluation>();
+        IEvaluation formula = null;
         for (String s : outputline) {
-            Integer r = 0;
+            IEvaluation r = null;
             if (Const.is(s)) {
-                r = Integer.parseInt(s);
+                // r = Integer.parseInt(s);
+                r = new Const(Integer.parseInt(s));
             } else if (Variable.is(s)) {
-                r = new Variable(s).evaluate(num);
+                //r = new Variable(s).evaluate(num);
+                r = new Variable(s);
             } else {
                 IEvaluation op1 = null;
                 IEvaluation op2 = null;
@@ -87,35 +102,32 @@ public class RPR {
                 }
 
                 if (Minus.is(s)) {
-                    r = -new Minus(op1, op2).evaluate(num);
+                    //r = -new Minus(op1, op2).evaluate(num);
+                    r = new Minus(op2, op1);
                 } else if (Plus.is(s)) {
-                    r = new Plus(op1, op2).evaluate(num);
+                    //r = new Plus(op1, op2).evaluate(num);
+                    r = new Plus(op2, op1);
                 } else if (Times.is(s)) {
-                    try {
-                        r = new Times(op2, op1).evaluate(num);
-                    } catch (EvaluationException ex) {
-                        ex.fillInStackTrace();
-                        throw ex;
-                    }
+
+                    r = new Times(op2, op1);
+
+
                 } else if (Division.is(s)) {
-                    try {
-                        r = new Division(op2, op1).evaluate(num);
-                    } catch (EvaluationException ex) {
-                        ex.fillInStackTrace();
-                        throw ex;
-                    }
+
+                    r = new Division(op2, op1);
+
 
                 } else {
                     throw new ParserException("unrecognized token");
                 }
             }
-            stack.push(new Const(r));
+            stack.push(r);
         }
 
         if (stack.isEmpty()
                 || stack.size() > 1) {
             throw new ParserException("function has been entered incorrect!");
         }
-        return stack.pop().evaluate(num);
+        return stack.pop();
     }
 }
